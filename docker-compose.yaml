@@ -7,25 +7,33 @@ services:
     ports:
       - "7777:7777"
     depends_on:
-      - firebase
+      - pubsub
     volumes:
       - ./go/app:/go/src/app
-  firebase:
-    build:
-      context: ./firebase
+  ruby:
+    build: ./ruby
     volumes:
-      - ./firebase/emulators/:/opt/workspace:cached
-      - ./firebase/bin/:/root/.cache:cached
-      - ./firebase/config/:/root/.config:cached
+      - ./ruby:/app
+  protoc:
+    build: ./protoc
+    volumes:
+      - ./protoc:/protoc
+      - ./go/app/eggplant/pb:/protoc/pb/go
+      - ./ruby/src/pb:/protoc/pb/rb
+  pubsub:
+    build: ./pubsub
+    restart: always
+    platform: linux/amd64
+    environment:
+      - PUBSUB_PROJECT_ID=eggplant-project
+      - PUBSUB_TOPIC_ID=eggplant-topic
+      - PUBSUB_SUBSCRIPTION_ID=eggplant-subscription
+      - PUBSUB_EMULATOR_HOST=0.0.0.0:8085
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./pubsub:/code
+    command:
+      ./pubsub/entrypoint.sh
     ports:
-      - 4000:4000 # Emulator Suite UI
-      - 5000:5000 # Firebase Hosting
-      - 5001:5001 # Clound Functions
-      - 9000:9000 # Realtime Database
-      - 8080:8080 # Cloud Firestore
-      - 8085:8085 # Cloud Pub/Sub
-    working_dir: /opt/workspace
-    networks:
-      - backend
-    command: bash
-    tty: true
+      - 8085:8085
